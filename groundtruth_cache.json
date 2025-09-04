@@ -1,0 +1,18 @@
+[
+  {
+    "question": " Cos'è un System-on-a-Board (SoB) o Single Board Computer (SBC)? ",
+    "ground_truth": "Un sistema ottenuto integrando, insieme al SoC, altri componenti come periferiche esterne, moduli fisici e ambienti di debug."
+  },
+  {
+    "question": "Quali sono i due tipi di hypervisor? ",
+    "ground_truth": "Tipo 1 (bare-metal) e Tipo 2 (hosted)."
+  },
+  {
+    "question": "Quali sono alcune delle sfide di sicurezza nell'Edge Computing? ",
+    "ground_truth": "Proteggere reti wireless, sistemi distribuiti, peer-to-peer e piattaforme di virtualizzazione, garantire l'integrazione e l'interoperabilità dei meccanismi di sicurezza, considerare i limiti tecnologici degli elementi dell'infrastruttura."
+  },
+  {
+    "question": "Quali sono i tre modelli di servizio del Cloud Computing? ",
+    "ground_truth": "SaaS (Software as a Service), PaaS (Platform as a Service), IaaS (Infrastructure as a Service)."
+  }
+]

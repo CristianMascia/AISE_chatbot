@@ -26,8 +26,10 @@ from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmb
 
 #utility per la gestione dei pdf, le variabili d'ambiente, text to speech
 from pypdf import PdfReader
+from langchain_community.document_loaders import PyMuPDFLoader
 from dotenv import load_dotenv
 import pyttsx3
+import re
 
 #setup .env
 load_dotenv()
@@ -58,9 +60,17 @@ def _ensure_event_loop():
 
 #splitta i documenti in chunk con overlap in modo da non perdere il contesto. Ad ogni chunk si dà un metadato soource per consentire di risalire alla fonte
 def _split_doc_to_documents(text: str, source: str) -> List[Document]:
+    if not text:
+        return ""
+    text = text.replace("-\n", "")  # rimuove i trattini a fine riga
+    text = text.replace("\n", " ")  # sostituisce le nuove righe
+    text = re.sub(r"/c\d+\b", ' ', text)
+    text = re.sub(r"[\x00-\x1F\x7F]", " ",text)
+    text = re.sub(r"\s{2,}", " ", text)  # sostituisce spazi multipli con uno spazio singolo
+
     splitter = RecursiveCharacterTextSplitter(
         separators=["\n\n", "\n", ".", " "],
-        chunk_size=1500,
+        chunk_size=900,
         chunk_overlap=200,
     )
     chunks = splitter.split_text(text)
@@ -69,7 +79,7 @@ def _split_doc_to_documents(text: str, source: str) -> List[Document]:
 
 #conversione dei chunk in embedding. Se c'è già indice FAISS lo si carica e lo si unisce ai nuovi documenti se presenti
 from opik import track
-
+    
 @track
 def build_or_update_notebook(list_of_files: List, notebook_name: str) -> None:
 
@@ -135,8 +145,10 @@ def get_sources_from_notebook(notebook_name: str) -> List[str]:
 NOTEBOOK_SYSTEM_PROMPT = (
     "Sei un assistente intelligente che aiuta a esplorare e comprendere un set di documenti. "
     "Rispondi alle domande basandoti ESCLUSIVAMENTE sul contesto fornito. "
-    "Sii preciso, cita le fonti se possibile e se la risposta non è nel contesto, dichiara di non avere l'informazione. "
-    "Non usare conoscenze esterne. Non inventare risposte. Spiega il contenuto dei file che ti viene richiesto in maniera chiara e comprensibile.\n\n"
+    "Sii preciso, cita le fonti e se la risposta non è nel contesto, dichiara di non avere l'informazione. "
+    "Non usare conoscenze esterne. Non inventare risposte, non fare inferenze non supportate."
+    "Cita sempre le fonti accennando da quale documento proviene l'informazione (es. 'come indicato in ...'). "
+    "Spiega il contenuto dei file che ti viene richiesto in maniera chiara e comprensibile.\n\n"
     "Contesto fornito: {context}"
 )
 
@@ -159,7 +171,10 @@ def prepare_rag_chain(
     loaded_db = FAISS.load_local(vs_path, embeddings, allow_dangerous_deserialization=True)
 
     #restituisce 4 chunk simili
-    search_kwargs = {"k": 4}
+    search_kwargs = {"k": 5,
+                     "fetch_k": 20,
+                     "lambda_mult": 0.5,
+                     }
     if source_filter: #se source filter attivo, recupera solo dagli elementi selezionati
         search_kwargs["filter"] = {"source": source_filter}
         print(f"Retriever attivato con filtro: source='{source_filter}'")
@@ -172,7 +187,7 @@ def prepare_rag_chain(
 
     #inizializza LLM 
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash", temperature=temperature, max_output_tokens=max_length, google_api_key=GOOGLE_API_KEY
+        model="gemini-2.0-flash", temperature=temperature, max_output_tokens=max_length, google_api_key=GOOGLE_API_KEY
     )
 
     #memoria conversazionale con ultimi 5 msg
@@ -218,7 +233,7 @@ def generate_answer(question: str, rag_chain) -> Tuple[str, List[dict]]:
 def summarize_text(full_text: str) -> str:
     if not full_text: return "Nessun testo da riassumere."
     _ensure_event_loop()
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3, google_api_key=GOOGLE_API_KEY)
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.3, google_api_key=GOOGLE_API_KEY)
     prompt = ChatPromptTemplate.from_messages([
         ("system", "Sei un esperto nel sintetizzare documenti complessi. Crea un riassunto dettagliato del testo, organizzando i concetti principali in punti chiave."),
         ("human", "Testo da riassumere:\n\n{text_content}")
@@ -236,7 +251,7 @@ def summarize_text(full_text: str) -> str:
 def generate_study_guide(full_text: str) -> str:
     if not full_text: return "Nessun testo su cui generare una guida."
     _ensure_event_loop()
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.2, google_api_key=GOOGLE_API_KEY)
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.2, google_api_key=GOOGLE_API_KEY)
     prompt = ChatPromptTemplate.from_messages([
         ("system", "Sei un assistente allo studio. Analizza il testo e crea una guida (domande e risposte brevi) sui concetti chiave. Formatta in Markdown:\n**Domanda 1:** ...\n**Risposta:** ..."),
         ("human", "Testo da cui creare la guida:\n\n{text_content}")
