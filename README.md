@@ -1,6 +1,6 @@
 # 📚 AISE_chatbot — Local NotebookLM
 
-AISE_chatbot è un assistente digitale che trasforma i tuoi documenti di studio in una knowledge base interrogabile in linguaggio naturale.  
+NotebookLM è un assistente digitale che trasforma i tuoi documenti di studio in una knowledge base interrogabile in linguaggio naturale.  
 Basato su tecniche di **Retrieval-Augmented Generation (RAG)**, ti permette di caricare PDF, fare domande, ricevere risposte con citazioni delle fonti, ottenere riassunti e guide allo studio, e persino ascoltare i contenuti tramite sintesi vocale.
 
 ---
@@ -43,11 +43,11 @@ Le risposte sono sempre accompagnate da citazioni delle fonti, in modo che l’u
 
 ---
 
-## ⚙️ Installazione (Terminale VS Code)
+## ⚙️ Installazione
 
 1. **Clonare il repository**
    ```bash
-   git clone https://github.com/tuo-user/AISE_chatbot.git
+   git clone https://github.com/alessiamanna/AISE_chatbot.git
    cd AISE_chatbot
    ```
 
@@ -130,14 +130,13 @@ python eval_opik.py
 
 L’app può essere distribuita su:
 - **Streamlit Community Cloud**  
-- Container in **Docker Hub** o orchestrati in Kubernetes  
-- Cloud provider (AWS, GCP, Azure) tramite immagini Docker  
+- Container in **Docker Hub** o orchestrati in Kubernetes 
 
 ---
 
 ## 🔮 Sviluppi futuri
 
-- Integrazione di modelli open-source locali (es. LLaMA, Mistral) per maggiore privacy e indipendenza.  
+- Integrazione di modelli open-source locali per maggiore privacy e indipendenza.  
 - Supporto multimodale (immagini, video, audio).  
 - Sistema di autenticazione multi-utente e gestione dei ruoli.  
 - Ottimizzazione energetica e scalabilità.  
@@ -146,7 +145,7 @@ L’app può essere distribuita su:
 
 ## ⚠️ Disclaimer
 
-AISE_chatbot non sostituisce lo studio autonomo né il ruolo del docente.  
+NotebookLM non sostituisce lo studio autonomo né il ruolo del docente.  
 Le risposte sono generate in base ai documenti forniti, ma devono essere sempre verificate criticamente dall’utente.  
 
 ---
