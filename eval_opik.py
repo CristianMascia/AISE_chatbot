@@ -14,7 +14,7 @@ from opik import configure, track, opik_context, Opik
 
 import backend
 
-# ---- Opik setup (stesse variabili già usate nell'app)
+#setup
 configure(
     use_local=False,
     api_key=os.getenv("OPIK_API_KEY"),
@@ -24,7 +24,7 @@ configure(
 NOTEBOOK_NAME = "cloud"
 GROUNDTRUTH_PATH = Path("groundtruth_cache.json")
 
-# Modelli Gemini per la valutazione RAGAS
+
 EVAL_LLM_MODEL = "gemini-2.0-flash"
 EVAL_EMB_MODEL = "models/text-embedding-004"
 
@@ -72,7 +72,7 @@ def run_ragas(dataset: Dataset, eval_llm, eval_emb):
     return {"result": result, "summary": summary}
 
 
-@track  # puoi anche usare @track(flush=True) se vuoi forzare il flush a fine funzione
+@track 
 def main(
     notebook_name: str = NOTEBOOK_NAME,
     groundtruth_path: str = str(GROUNDTRUTH_PATH),
@@ -81,17 +81,17 @@ def main(
     eval_emb_model: str = EVAL_EMB_MODEL,
     output_xlsx: str = OUTPUT_XLSX,
 ):
-    # Carico il gold set
+    
     with open(groundtruth_path, "r", encoding="utf-8") as f:
         gold = json.load(f)
 
     questions = [x["question"] for x in gold]
     ground_truth = [x["ground_truth"] for x in gold]
 
-    # Preparo la RAG chain
+    
     rag = backend.prepare_rag_chain(notebook_name)
 
-    # Genero risposte e contesti
+    
     answers, contexts = [], []
     for idx, q in enumerate(questions, start=1):
         print(f"[{idx}/{len(questions)}] Domanda: {q}")
@@ -101,7 +101,7 @@ def main(
         print(f"  ↳ Risposta: {out['answer'][:80]}...")
         time.sleep(request_delay)
 
-    # Creo il dataset per RAGAS
+    
     dataset = Dataset.from_dict({
         "question": questions,
         "answer": answers,
@@ -109,17 +109,17 @@ def main(
         "ground_truth": ground_truth,
     })
 
-    # Valutazione RAGAS
+
     ragas_out = run_ragas(dataset, eval_llm, eval_emb)
     result = ragas_out["result"]
     summary = ragas_out["summary"]
 
-    # Salvataggio risultati su file
+    
     df = result.to_pandas()
     df.to_excel(output_xlsx, index=False)
     print(f"✅ Risultati salvati in {output_xlsx}")
 
-    # ---- LOG DELLE MEDIE SU OPIK (compariranno nei chart della dashboard)
+   
     opik_context.update_current_trace(
         tags=["evaluation", "ragas", notebook_name],
         feedback_scores=[
@@ -131,7 +131,7 @@ def main(
         ],
     )
 
-    # Ritorno anche i dati chiave (finiscono nel log del trace)
+    
     return {
         "output_file": output_xlsx,
         "metrics_summary": summary,
@@ -145,5 +145,5 @@ if __name__ == "__main__":
     try:
         main()
     finally:
-        # Garantisce che tutti i log vengano inviati ad Opik prima dell'uscita
+        #garantisce che tutti i log vengano inviati ad Opik prima dell'uscita
         Opik().flush()
