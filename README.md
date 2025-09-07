@@ -24,7 +24,7 @@ Le risposte sono sempre accompagnate da citazioni delle fonti, in modo che l’u
 - **Privacy**: i documenti vengono gestiti e indicizzati localmente in FAISS, senza invio a database esterni.  
 - **Trasparenza**: ogni risposta include le fonti da cui è stata tratta.  
 - **Affidabilità**: il modello è vincolato a usare solo i contenuti caricati, riducendo il rischio di hallucinations.  
-- **Etica**: in linea con i principi europei **ALTAI** e **FASTEP** per un’IA responsabile.  
+- **Etica**: in linea con i principi europei **ALTAI** e **FASTEPS** per un’IA responsabile.  
 
 ---
 
@@ -60,7 +60,7 @@ Le risposte sono sempre accompagnate da citazioni delle fonti, in modo che l’u
    source .venv/bin/activate
    ```
 
-   **Su Windows (PowerShell)**
+   **Su Windows**
    ```powershell
    python -m venv .venv
    .venv\Scripts\activate
@@ -77,7 +77,7 @@ Le risposte sono sempre accompagnate da citazioni delle fonti, in modo che l’u
    cp .env.example .env   # macOS/Linux
    copy .env.example .env # Windows (cmd)
    ```
-   Compilare i token richiesti:
+   Inserire i token richiesti:
    ```
    GOOGLE_API_KEY=...
    OPIK_API_KEY=...
@@ -139,7 +139,7 @@ L’app può essere distribuita su:
 - Integrazione di modelli open-source locali per maggiore privacy e indipendenza.  
 - Supporto multimodale (immagini, video, audio).  
 - Sistema di autenticazione multi-utente e gestione dei ruoli.  
-- Ottimizzazione energetica e scalabilità.  
+- Ottimizzazione e scalabilità.  
 
 ---
 
