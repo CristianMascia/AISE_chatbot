@@ -108,7 +108,7 @@ For an example of RAG implementation with LangChain, see the **"Example RAG Lang
 
 1. **Clone repository**
    ```bash
-   git clone https://github.com/alessiamanna/NotebookLM.git
+   git clone --depth 1 https://github.com/CristianMascia/AISE_chatbot.git
    cd NotebookLM
    ```
 
