@@ -8,7 +8,7 @@
     --dark: #2d2d2d;
 }
 
-/* Titolo principale */
+/* Main title */
 .stTitle {
     font-family: 'Roboto', sans-serif;
     font-size: 2.5em;
@@ -18,7 +18,7 @@
     font-weight: 700;
 }
 
-/* Header e sidebar */
+/* Header and sidebar */
 .stHeader {
     background-color: var(--primary);
     font-family: 'Roboto', sans-serif;
@@ -34,7 +34,7 @@
     color: #000000;
 }
 
-/* Testo generale */
+/* General text */
 .stMarkdown {
     font-family: 'Roboto', sans-serif;
     color: var(--dark);
@@ -45,7 +45,7 @@
     font-weight: 500;
 }
 
-/* Bottoni */
+/* Buttons */
 .customBtn {
     background-color: var(--secondary);
     border-radius: 8px;
@@ -59,7 +59,7 @@
     color: var(--light);
 }
 
-/* Messaggi utente e assistente */
+/* User and assistant messages */
 .user-message {
     display: flex;
     justify-content: flex-end;
@@ -83,7 +83,7 @@
     font-size: 16px;
 }
 
-/* Bolle di chat */
+/* Chat bubbles */
 .user-bubble {
     background-color: var(--secondary);
     padding: 8px;
@@ -106,7 +106,7 @@
     font-weight: 400;
 }
 
-/* Avatar */
+/* Avatars */
 .avatar {
     width: 32px;
     height: 32px;

@@ -1,7 +1,8 @@
-'''rag che prende pdf, ne estrae il testo, spezzetta in chunk per la costruzione di embedding che vengono
-salvati in un db vettoriale (FAISS). Quando viene fatta una domanda, si recuperano i pezzi più pertinenti dai documenti
-e Gemini si occupa di comporre una risposta basandosi solo su quei pezzi. Sono proposte anche utility per riassunit, guide studio e sintesi vocali.
-'''
+"""RAG pipeline that ingests PDFs, extracts their text, splits it into chunks, and builds embeddings
+stored in a FAISS vector database. When a question arrives, the most relevant document chunks are
+retrieved and passed to Gemini, which answers using only that context. Utility helpers for
+summaries, study guides, and text-to-speech are also provided.
+"""
 
 import os
 import sys
@@ -13,7 +14,7 @@ from opik import configure
 from opik import track
 
 
-#import langchain e faiss 
+# import langchain and FAISS
 from langchain_community.vectorstores import FAISS
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
@@ -21,17 +22,17 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferWindowMemory
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 
-#gemini
+# Gemini
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 
-#utility per la gestione dei pdf, le variabili d'ambiente, text to speech
+# utilities for PDF handling, environment variables, and text to speech
 from pypdf import PdfReader
 from langchain_community.document_loaders import PyMuPDFLoader
 from dotenv import load_dotenv
 import pyttsx3
 import re
 
-#setup .env
+# setup .env
 load_dotenv()
 
 gemini_key = os.getenv("GEMINI_API_KEY")
@@ -40,9 +41,9 @@ if gemini_key and not os.getenv("GOOGLE_API_KEY"):
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 if not GOOGLE_API_KEY:
-    raise ValueError("Imposta GOOGLE_API_KEY (o GEMINI_API_KEY) nel .env per usare Gemini.")
+    raise ValueError("Set GOOGLE_API_KEY (or GEMINI_API_KEY) in .env to use Gemini.")
 
-#ignore warning asyncio
+# ignore asyncio warning on Windows
 if sys.platform.startswith("win"):
     try:
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -56,17 +57,17 @@ def _ensure_event_loop():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-#funzioni per gestire document ingestion
+# ingestion helpers
 
-#splitta i documenti in chunk con overlap in modo da non perdere il contesto. Ad ogni chunk si dà un metadato soource per consentire di risalire alla fonte
+# split documents into overlapping chunks to preserve context; each chunk stores source metadata
 def _split_doc_to_documents(text: str, source: str) -> List[Document]:
     if not text:
         return ""
-    text = text.replace("-\n", "")  # rimuove i trattini a fine riga
-    text = text.replace("\n", " ")  # sostituisce le nuove righe
+    text = text.replace("-\n", "")  # remove hyphenation at line endings
+    text = text.replace("\n", " ")  # replace newlines with spaces
     text = re.sub(r"/c\d+\b", ' ', text)
     text = re.sub(r"[\x00-\x1F\x7F]", " ",text)
-    text = re.sub(r"\s{2,}", " ", text)  # sostituisce spazi multipli con uno spazio singolo
+    text = re.sub(r"\s{2,}", " ", text)  # collapse repeated whitespace
 
     splitter = RecursiveCharacterTextSplitter(
         separators=["\n\n", "\n", ".", " "],
@@ -77,7 +78,7 @@ def _split_doc_to_documents(text: str, source: str) -> List[Document]:
     return [Document(page_content=ch, metadata={"source": source}) for ch in chunks]
 
 
-#conversione dei chunk in embedding. Se c'è già indice FAISS lo si carica e lo si unisce ai nuovi documenti se presenti
+# convert chunks into embeddings; merge with existing FAISS index when present
 from opik import track
     
 @track
@@ -91,10 +92,10 @@ def build_or_update_notebook(list_of_files: List, notebook_name: str) -> None:
             source_name = Path(file_path).name
             docs.extend(_split_doc_to_documents(text, source=source_name))
         except Exception as e:
-            print(f"[WARN] Impossibile leggere {file_path}: {e}")
+            print(f"[WARN] Unable to read {file_path}: {e}")
 
     if not docs:
-        print("⚠️ Nessun documento valido da indicizzare.")
+        print("⚠️ No valid documents to index.")
         return
 
     _ensure_event_loop()
@@ -106,24 +107,24 @@ def build_or_update_notebook(list_of_files: List, notebook_name: str) -> None:
     index_file_path = os.path.join(vs_path, "index.faiss")
 
     if os.path.exists(index_file_path):
-        print(f"Aggiornamento del notebook esistente: '{notebook_name}'")
+        print(f"Updating existing notebook: '{notebook_name}'")
         loaded_db = FAISS.load_local(vs_path, embeddings, allow_dangerous_deserialization=True)
         new_docs_db = FAISS.from_documents(docs, embeddings)
         loaded_db.merge_from(new_docs_db)
         loaded_db.save_local(vs_path)
-        print(f"Notebook '{notebook_name}' aggiornato con successo.")
+        print(f"Notebook '{notebook_name}' updated successfully.")
     else:
-        print(f"Creazione di un nuovo indice per il notebook: '{notebook_name}'")
+        print(f"Creating a new index for notebook: '{notebook_name}'")
         db = FAISS.from_documents(docs, embeddings)
         db.save_local(vs_path)
-        print(f"Notebook '{notebook_name}' creato con successo.")
+        print(f"Notebook '{notebook_name}' created successfully.")
 
 
 
-#recupero fonti dall'indice
+# retrieve sources from the index
 @track
 def get_sources_from_notebook(notebook_name: str) -> List[str]:
-    #carico indice faiss
+    # load FAISS index
     vs_path = os.path.join("vector_store", notebook_name)
     if not os.path.exists(vs_path):
         return []
@@ -133,26 +134,25 @@ def get_sources_from_notebook(notebook_name: str) -> List[str]:
         embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=GOOGLE_API_KEY)
         db = FAISS.load_local(vs_path, embeddings, allow_dangerous_deserialization=True)
         
-        all_metadata = [doc.metadata for doc in db.docstore._dict.values()] #estrae i metadata
+        all_metadata = [doc.metadata for doc in db.docstore._dict.values()]  # extract metadata
         unique_sources = sorted(list(set(meta['source'] for meta in all_metadata if 'source' in meta)))
         return unique_sources
     except Exception as e:
-        print(f"[get_sources_from_notebook] Errore: {e}")
+        print(f"[get_sources_from_notebook] Error: {e}")
         return []
 
-#prompt generico dato che non è un chatbot specializzato. Specifico che non deve divagare, usare conoscenza esterna e deve offire spiegazioni chiare e comprensibili,
-#in quanto chatbot pensato per il supporto allo studio
+# generic prompt tailored for a study assistant that must stay grounded in the provided context
 NOTEBOOK_SYSTEM_PROMPT = (
-    "Sei un assistente intelligente che aiuta a esplorare e comprendere un set di documenti. "
-    "Rispondi alle domande basandoti ESCLUSIVAMENTE sul contesto fornito. "
-    "Sii preciso, cita le fonti e se la risposta non è nel contesto, dichiara di non avere l'informazione. "
-    "Non usare conoscenze esterne. Non inventare risposte, non fare inferenze non supportate."
-    "Cita sempre le fonti accennando da quale documento proviene l'informazione (es. 'come indicato in ...'). "
-    "Spiega il contenuto dei file che ti viene richiesto in maniera chiara e comprensibile.\n\n"
-    "Contesto fornito: {context}"
+    "You are an intelligent assistant that helps explore and understand a set of documents. "
+    "Answer questions based EXCLUSIVELY on the provided context. "
+    "Be precise, cite your sources, and if the answer is not in the context, state that the information is unavailable. "
+    "Do not rely on external knowledge. Do not invent answers or draw unsupported inferences. "
+    "Always reference which document the information came from (e.g., 'as noted in ...'). "
+    "Explain the requested file contents clearly and in accessible language.\n\n"
+    "Provided context: {context}"
 )
 
-#rag chain
+# RAG chain
 @track
 def prepare_rag_chain(
     notebook_name: str,
@@ -166,18 +166,18 @@ def prepare_rag_chain(
 
     vs_path = os.path.join("vector_store", notebook_name)
     if not os.path.exists(vs_path):
-        raise FileNotFoundError(f"Il notebook '{notebook_name}' non esiste.")
+        raise FileNotFoundError(f"Notebook '{notebook_name}' does not exist.")
 
     loaded_db = FAISS.load_local(vs_path, embeddings, allow_dangerous_deserialization=True)
 
-    #restituisce 4 chunk simili
+    # retrieve relevant chunks
     search_kwargs = {"k": 5,
                      "fetch_k": 20,
                      "lambda_mult": 0.5,
                      }
-    if source_filter: #se source filter attivo, recupera solo dagli elementi selezionati
+    if source_filter:  # restrict retrieval to the selected source
         search_kwargs["filter"] = {"source": source_filter}
-        print(f"Retriever attivato con filtro: source='{source_filter}'")
+        print(f"Retriever enabled with filter: source='{source_filter}'")
 
     retriever = loaded_db.as_retriever(search_kwargs=search_kwargs)
 
@@ -185,21 +185,20 @@ def prepare_rag_chain(
     human_message = HumanMessagePromptTemplate.from_template("{question}")
     qa_prompt = ChatPromptTemplate.from_messages([system_message, human_message])
 
-    #inizializza LLM 
+    # initialize LLM
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.0-flash", temperature=temperature, max_output_tokens=max_length, google_api_key=GOOGLE_API_KEY
     )
 
-    #memoria conversazionale con ultimi 5 msg
+    # conversational memory with the last 5 exchanges
     memory = ConversationBufferWindowMemory(
         k=5, memory_key="chat_history", return_messages=True, output_key="answer"
     )
 
-    #conversationalretrievalchain, quando si fa una domanda al chatbot la chain fa:
-    #1. cerca chunk più rilevanti
-    #2. li passa a gemini
-    #3. ottiene una risposta coerente
-    #  
+    # ConversationalRetrievalChain workflow:
+    # 1. retrieve the most relevant chunks
+    # 2. pass them to Gemini
+    # 3. return a grounded answer
     return ConversationalRetrievalChain.from_llm(
         llm=llm,
         chain_type="stuff",
@@ -209,7 +208,7 @@ def prepare_rag_chain(
         combine_docs_chain_kwargs={"prompt": qa_prompt},
     )
 
-#generazione risposta, invoca la catena con la domanda
+# generate an answer by invoking the chain with the user's question
 @track
 def generate_answer(question: str, rag_chain) -> Tuple[str, List[dict]]:
     try:
@@ -219,52 +218,52 @@ def generate_answer(question: str, rag_chain) -> Tuple[str, List[dict]]:
         
         sources = []
         for d in docs:
-            source_name = d.metadata.get("source", "N/D")
-            snippet = d.page_content.strip()[:200] + "..." 
+            source_name = d.metadata.get("source", "N/A")
+            snippet = d.page_content.strip()[:200] + "..."
             sources.append({"source": source_name, "snippet": snippet})
             
         return answer, sources
     except Exception as e:
-        print(f"[generate_answer] Errore: {e}")
-        return "Si è verificato un problema nel generare la risposta.", []
+        print(f"[generate_answer] Error: {e}")
+        return "There was a problem generating the answer.", []
 
-#llm per sintesi in punti chiave dei documenti forniti.
+# LLM-powered summary of the provided documents
 @track
 def summarize_text(full_text: str) -> str:
-    if not full_text: return "Nessun testo da riassumere."
+    if not full_text: return "No text to summarize."
     _ensure_event_loop()
     llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.3, google_api_key=GOOGLE_API_KEY)
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "Sei un esperto nel sintetizzare documenti complessi. Crea un riassunto dettagliato del testo, organizzando i concetti principali in punti chiave."),
-        ("human", "Testo da riassumere:\n\n{text_content}")
+        ("system", "You are an expert at synthesizing complex documents. Create a detailed summary of the text, organizing the main ideas into key bullet points."),
+        ("human", "Text to summarize:\n\n{text_content}")
     ])
     chain = prompt | llm
     try:
         response = chain.invoke({"text_content": full_text})
         return response.content
     except Exception as e:
-        print(f"[summarize_text] Errore: {e}")
-        return "Impossibile generare il riassunto."
+        print(f"[summarize_text] Error: {e}")
+        return "Unable to generate the summary."
 
-#llm per fornire guida allo studio con domande e relative risposte
+# LLM that provides a study guide with questions and answers
 @track
 def generate_study_guide(full_text: str) -> str:
-    if not full_text: return "Nessun testo su cui generare una guida."
+    if not full_text: return "No text available to build a guide."
     _ensure_event_loop()
     llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.2, google_api_key=GOOGLE_API_KEY)
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "Sei un assistente allo studio. Analizza il testo e crea una guida (domande e risposte brevi) sui concetti chiave. Formatta in Markdown:\n**Domanda 1:** ...\n**Risposta:** ..."),
-        ("human", "Testo da cui creare la guida:\n\n{text_content}")
+        ("system", "You are a study assistant. Analyze the text and create a guide (questions and short answers) covering the key concepts. Format in Markdown:\n**Question 1:** ...\n**Answer:** ..."),
+        ("human", "Text to build the guide from:\n\n{text_content}")
     ])
     chain = prompt | llm
     try:
         response = chain.invoke({"text_content": full_text})
         return response.content
     except Exception as e:
-        print(f"[generate_study_guide] Errore: {e}")
-        return "Impossibile generare la guida allo studio."
+        print(f"[generate_study_guide] Error: {e}")
+        return "Unable to generate the study guide."
 
-#pyttsx3 per fare conversione del testo TTS, riproducibile direttamente tramite streamlit
+# pyttsx3 handles the offline TTS conversion, directly playable in Streamlit
 @track
 def text_to_speech(text: str, audio_path: str = "summary_audio.mp3") -> str:
     try:
@@ -273,5 +272,5 @@ def text_to_speech(text: str, audio_path: str = "summary_audio.mp3") -> str:
         engine.runAndWait()
         return audio_path
     except Exception as e:
-        print(f"[text_to_speech] Errore: {e}")
+        print(f"[text_to_speech] Error: {e}")
         return ""

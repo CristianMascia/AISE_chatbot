@@ -101,14 +101,64 @@ For an example of RAG implementation with LangChain, see the **"Example RAG Lang
 
 ## What is Opik?
 
+From the Opik documentation:
+
+```Opik is an open-source logging, debugging, and optimization platform for AI agents and LLM applications. If you’re building AI features, you know it’s easy to spin up a working prototype but harder to log, test, iterate, and monitor to meet production requirements.
+
+Opik gives you all the tools you need to go from LLM observability to action across your AI application footprint and dev cycle. Ship measurable improvements with gorgeous logs, annotation and scoring functions, pre-configured LLM-as-a-judge eval metrics, and even automated agent optimization algorithms to maximize performance.
+```
+
+In order to use OPIK, you should create an account on [Opik](https://www.comet.com/opik/) for free.
+Then, you should create a new project. 
+![Opik Dashboard](img/opik_project.png)
+
+Finally, you should get the api key.
+
+![Opik API Key](img/opik_api.png)
+
+
 ## What is Ragas?
+
+**Ragas** is a library that helps you move from "vibe checks" to systematic evaluation loops for your AI applications.  
+Ragas allows you to **systematically improve LLM applications** while maintaining reproducibility and scalability.
+
+---
+
+### Why Ragas?
+
+Traditional evaluation metrics often **don't capture what matters** for LLM applications.  
+Manual evaluation **doesn't scale**.  
+
+**Ragas solves this** by combining LLM-driven metrics with systematic experimentation to create a **continuous improvement loop** for your AI applications.
+
+---
+
+### Key Features
+
+#### 1. Experiments-First Approach
+- Evaluate changes consistently with experiments.  
+- Make changes, run evaluations, observe results, and iterate to improve your LLM application.  
+
+#### 2. Ragas Metrics
+- Create **custom metrics** tailored to your use case using simple decorators.  
+- Or use the library of **predefined metrics** provided by Ragas.  
+- Learn more about metrics in [Ragas Metrics Documentation](#).
+
+#### 3. Easy Integration
+- Built-in dataset management and result tracking.  
+- Integration with popular frameworks like:
+  - LangChain  
+  - LlamaIndex  
+  - And more  
+
+---
 
 
 ## ⚙️ Installation
 
 1. **Clone repository**
    ```bash
-   git clone --depth 1 https://github.com/CristianMascia/AISE_chatbot.git
+   git clone https://github.com/alessiamanna/NotebookLM.git
    cd NotebookLM
    ```
 
@@ -158,13 +208,80 @@ For an example of RAG implementation with LangChain, see the **"Example RAG Lang
 
 ## 📊 Testing and Evaluation
 
-NotebookLM integrates tools for evaluating RAG performance:
-
-- **RAGAS** → quantitative metrics (faithfulness, answer relevance, context precision/recall)  
-- **Opik** → interaction tracking, human feedback, auditing  
+NotebookLM integrates tools for evaluating RAG performance: **Opik** and **RAGAS**.
 
 The dedicated scripts are:
 ```bash
 python ragas_eval.py
 python eval_opik.py
 ```
+
+### Opik Evaluation
+
+The ```eval_opik.py``` script containts evluation for 
+
+#### 🔧 What This Script Does
+
+- **Loads a ground-truth dataset** containing questions and reference answers.  
+- **Builds a RAG pipeline** using a backend-defined retrieval + generation chain.  
+- **Runs the RAG chain for each question**, collecting:
+  - generated answer  
+  - retrieved contexts  
+- **Constructs a HuggingFace `Dataset`** ready for RAGAS evaluation.  
+- **Evaluates the RAG system** on the four standard RAGAS metrics:
+  - `context_precision`
+  - `context_recall`
+  - `faithfulness`
+  - `answer_relevancy`
+- **Computes average metric scores** for quick comparison.  
+- **Exports all results to Excel** (`results_ragasopik.xlsx`).  
+- **Logs all metrics and metadata to Opik**, enabling experiment tracking and reproducibility.
+
+---
+
+#### 🧩 Key Components
+
+##### **Google Gemini Models**
+The evaluation uses:
+- `gemini-2.0-flash` (LLM for scoring)
+- `text-embedding-004` (embeddings for similarity)
+
+These models support the RAGAS scoring process.
+
+##### **Opik Integration**
+The script integrates with **Opik** using:
+- `@track` decorators  
+- `opik_context.update_current_trace()` for metric logging  
+- `Opik().flush()` to ensure logs are written before exit  
+
+This enables full experiment tracking and comparison across runs.
+
+##### **RAG Execution**
+`run_rag_for_question()` executes the RAG chain and returns:
+- the generated answer  
+- the retrieved contexts  
+
+##### **RAGAS Evaluation**
+`run_ragas()`:
+- runs RAGAS metrics on the dataset  
+- returns row-level scores  
+- computes summary averages  
+- prepares results for export and tracking  
+
+---
+
+##### 📄 Output Files
+
+This script builds a `results_ragasopik.xlsx` file contains the RAGAS metrics. In addition, the matrics are logged into **Opik** .
+
+---
+
+##### ▶️ How to Run
+
+```bash
+python eval_opik.py
+```
+
+####
+
+In addition, a `ragas_eval.py` script is provided for running the RAGAS evaluation without tracking results through Opik.

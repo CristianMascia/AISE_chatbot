@@ -9,10 +9,10 @@ from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmb
 
 import backend
 
-NOTEBOOK_NAME = "cloud"  #notebook di esempio
-GROUNDTRUTH_PATH = Path("groundtruth_cache.json") #json con la ground truth
+NOTEBOOK_NAME = "cloud"  #example notebook name
+GROUNDTRUTH_PATH = Path("groundtruth_cache.json") #json with the ground truth
 
-# modelli Gemini per la valutazione RAGAS
+# Gemini models for RAGAS evaluation
 eval_llm = ChatGoogleGenerativeAI(
     model="gemini-2.0-flash",
     temperature=0.0,
@@ -36,7 +36,7 @@ def main():
 
     answers, contexts = [], []
     for idx, q in enumerate(questions, start=1):
-        print(f"[{idx}/{len(questions)}] Domanda: {q}")
+        print(f"[{idx}/{len(questions)}] Question: {q}")
         
         response = rag.invoke({"question": q})
         ans = response.get("answer", "").strip()
@@ -46,7 +46,7 @@ def main():
         
         contexts.append([doc.page_content for doc in source_docs])
         
-        print(f"  ↳ Risposta: {ans[:80]}...")
+        print(f"  ↳ Answer: {ans[:80]}...")
         time.sleep(REQUEST_DELAY)
 
     dataset = Dataset.from_dict({
@@ -64,8 +64,9 @@ def main():
     )
 
     df = result.to_pandas()
-    df.to_excel("risultati_ragas_3.xlsx", index=False)
-    print("✅ Risultati salvati in risultati_ragas.xlsx")
+    output_file = "ragas_results_3.xlsx"
+    df.to_excel(output_file, index=False)
+    print(f"✅ Results saved in {output_file}")
 
 if __name__ == "__main__":
     main()

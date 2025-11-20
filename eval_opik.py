@@ -14,7 +14,7 @@ from opik import configure, track, opik_context, Opik
 
 import backend
 
-#setup
+# setup
 configure(
     use_local=False,
     api_key=os.getenv("OPIK_API_KEY"),
@@ -38,13 +38,13 @@ eval_emb = GoogleGenerativeAIEmbeddings(
     google_api_key=os.getenv("GOOGLE_API_KEY"),
 )
 
-REQUEST_DELAY = 10  # secondi
-OUTPUT_XLSX = "risultati_ragasopik.xlsx"
+REQUEST_DELAY = 10  # seconds
+OUTPUT_XLSX = "results_ragasopik.xlsx"
 
 
 @track
 def run_rag_for_question(rag_chain, question: str):
-    """Esegue la catena RAG e restituisce answer + contexts per la singola domanda."""
+    """Runs the RAG chain and returns answer + contexts for a single question."""
     response = rag_chain.invoke({"question": question})
     ans = (response.get("answer") or "").strip()
     source_docs = response.get("source_documents", []) or []
@@ -54,7 +54,8 @@ def run_rag_for_question(rag_chain, question: str):
 
 @track
 def run_ragas(dataset: Dataset, eval_llm, eval_emb):
-    """Esegue RAGAS sulle quattro metriche e restituisce risultati + riepilogo medie."""
+    """Runs RAGAS on the four metrics and returns results + summary of means."""
+    
     result = evaluate(
         dataset=dataset,
         metrics=[context_precision, context_recall, faithfulness, answer_relevancy],
@@ -94,11 +95,11 @@ def main(
     
     answers, contexts = [], []
     for idx, q in enumerate(questions, start=1):
-        print(f"[{idx}/{len(questions)}] Domanda: {q}")
+        print(f"[{idx}/{len(questions)}] Question: {q}")
         out = run_rag_for_question(rag, q)
         answers.append(out["answer"])
         contexts.append(out["contexts"])
-        print(f"  ↳ Risposta: {out['answer'][:80]}...")
+        print(f"  ↳ Answer: {out['answer'][:80]}...")
         time.sleep(request_delay)
 
     
@@ -117,7 +118,7 @@ def main(
     
     df = result.to_pandas()
     df.to_excel(output_xlsx, index=False)
-    print(f"✅ Risultati salvati in {output_xlsx}")
+    print(f"✅ Results saved in {output_xlsx}")
 
    
     opik_context.update_current_trace(
@@ -145,5 +146,5 @@ if __name__ == "__main__":
     try:
         main()
     finally:
-        #garantisce che tutti i log vengano inviati ad Opik prima dell'uscita
+        # ensure all logs are flushed to Opik before exiting
         Opik().flush()
